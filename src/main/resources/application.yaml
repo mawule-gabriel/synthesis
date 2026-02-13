@@ -1,0 +1,41 @@
+spring:
+  application:
+    name: synthesis
+  
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/synthesis}
+    username: ${DB_USER:synthesis_user}
+    password: ${DB_PASSWORD:changeme}
+    driver-class-name: org.postgresql.Driver
+  
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+  
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+
+aws:
+  bedrock:
+    region: ${AWS_REGION:us-east-1}
+    model-id: ${BEDROCK_MODEL_ID:anthropic.claude-3-sonnet-20240229-v1:0}
+  s3:
+    bucket: ${S3_BUCKET:synthesis-attachments}
+
+security:
+  jwt:
+    secret: ${JWT_SECRET}
+    expiration-ms: 86400000
+
+synthesis:
+  ai:
+    max-tokens: 2048
+    temperature: 0.2
+  escalation:
+    notification-email: ${ESCALATION_EMAIL}

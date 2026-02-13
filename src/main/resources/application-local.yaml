@@ -1,0 +1,25 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/synthesis
+    username: synthesis_user
+    password: changeme
+  
+  jpa:
+    show-sql: true
+    hibernate:
+      ddl-auto: update
+
+security:
+  jwt:
+    secret: synthesis-local-secret-key-change-in-production-minimum-256-bits
+
+aws:
+  bedrock:
+    region: us-east-1
+    model-id: anthropic.claude-3-sonnet-20240229-v1:0
+  s3:
+    bucket: synthesis-attachments-local
+
+synthesis:
+  escalation:
+    notification-email: dev@synthesis.local
