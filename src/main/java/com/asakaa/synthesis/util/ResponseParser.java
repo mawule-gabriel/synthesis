@@ -19,7 +19,7 @@ public class ResponseParser {
         try {
             // Extract JSON from response if it contains markdown code blocks
             String jsonContent = extractJson(rawResponse);
-            
+
             JsonNode root = objectMapper.readTree(jsonContent);
             JsonNode differentials = root.get("differentials");
 
@@ -48,7 +48,7 @@ public class ResponseParser {
         }
     }
 
-    private String extractJson(String rawResponse) {
+    public String extractJson(String rawResponse) {
         // Remove markdown code blocks if present
         String cleaned = rawResponse.trim();
         if (cleaned.startsWith("```json")) {
@@ -76,7 +76,7 @@ public class ResponseParser {
         try {
             // Extract JSON from response if it contains markdown code blocks
             String jsonContent = extractJson(rawResponse);
-            
+
             JsonNode root = objectMapper.readTree(jsonContent);
             JsonNode treatments = root.get("treatments");
 
@@ -87,14 +87,14 @@ public class ResponseParser {
             List<com.asakaa.synthesis.domain.dto.response.TreatmentResponse> result = new ArrayList<>();
 
             for (JsonNode treatment : treatments) {
-                com.asakaa.synthesis.domain.dto.response.TreatmentResponse dto = 
+                com.asakaa.synthesis.domain.dto.response.TreatmentResponse dto =
                         com.asakaa.synthesis.domain.dto.response.TreatmentResponse.builder()
-                        .type(treatment.has("type") ? treatment.get("type").asText() : null)
-                        .drugName(treatment.has("drugName") ? treatment.get("drugName").asText() : null)
-                        .dosage(treatment.has("dosage") ? treatment.get("dosage").asText() : null)
-                        .duration(treatment.has("duration") ? treatment.get("duration").asText() : null)
-                        .instructions(treatment.has("instructions") ? treatment.get("instructions").asText() : null)
-                        .build();
+                                .type(treatment.has("type") ? treatment.get("type").asText() : null)
+                                .drugName(treatment.has("drugName") ? treatment.get("drugName").asText() : null)
+                                .dosage(treatment.has("dosage") ? treatment.get("dosage").asText() : null)
+                                .duration(treatment.has("duration") ? treatment.get("duration").asText() : null)
+                                .instructions(treatment.has("instructions") ? treatment.get("instructions").asText() : null)
+                                .build();
 
                 result.add(dto);
             }

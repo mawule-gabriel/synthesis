@@ -3,6 +3,7 @@ package com.asakaa.synthesis.service;
 import com.asakaa.synthesis.domain.dto.request.DiagnosticRequest;
 import com.asakaa.synthesis.domain.dto.response.DiagnosticResponse;
 import com.asakaa.synthesis.domain.dto.response.DifferentialDto;
+import com.asakaa.synthesis.domain.dto.response.ImageAnalysisResponse;
 import com.asakaa.synthesis.domain.entity.Consultation;
 import com.asakaa.synthesis.domain.entity.ConsultationStatus;
 import com.asakaa.synthesis.domain.entity.Diagnosis;
@@ -15,6 +16,8 @@ import com.asakaa.synthesis.integration.bedrock.ClinicalContext;
 import com.asakaa.synthesis.repository.ConsultationRepository;
 import com.asakaa.synthesis.repository.DiagnosisRepository;
 import com.asakaa.synthesis.util.ResponseParser;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -36,25 +39,22 @@ public class DiagnosticService {
     private final BedrockPromptBuilder bedrockPromptBuilder;
     private final BedrockClient bedrockClient;
     private final ResponseParser responseParser;
+    private final ObjectMapper objectMapper;
 
     @Transactional
     public DiagnosticResponse analyze(DiagnosticRequest request) {
         log.info("Starting diagnostic analysis for consultation ID: {}", request.getConsultationId());
 
-        // Fetch consultation
         Consultation consultation = consultationRepository.findById(request.getConsultationId())
                 .orElseThrow(() -> new ResourceNotFoundException("Consultation", request.getConsultationId()));
 
         Patient patient = consultation.getPatient();
 
-        // Build clinical context
         ClinicalContext context = buildClinicalContext(consultation, patient, request);
 
-        // Generate prompt
         String prompt = bedrockPromptBuilder.buildDiagnosticPrompt(context);
         log.debug("Generated diagnostic prompt for consultation ID: {}", request.getConsultationId());
 
-        // Invoke Bedrock
         String rawResponse;
         try {
             rawResponse = bedrockClient.invoke(prompt);
@@ -64,7 +64,6 @@ public class DiagnosticService {
                     "Failed to generate diagnostic analysis for consultation " + request.getConsultationId(), e);
         }
 
-        // Parse response
         List<DifferentialDto> differentials;
         try {
             differentials = responseParser.parseDiagnosticResponse(rawResponse);
@@ -76,7 +75,6 @@ public class DiagnosticService {
 
         log.info("Received {} differentials for consultation ID: {}", differentials.size(), request.getConsultationId());
 
-        // Save high-confidence diagnoses
         for (DifferentialDto differential : differentials) {
             if (differential.getConfidence().compareTo(BigDecimal.valueOf(0.5)) > 0) {
                 Diagnosis diagnosis = Diagnosis.builder()
@@ -88,16 +86,14 @@ public class DiagnosticService {
                         .build();
                 diagnosisRepository.save(diagnosis);
                 differential.setId(diagnosis.getId());
-                log.debug("Saved diagnosis: {} with confidence: {}", 
+                log.debug("Saved diagnosis: {} with confidence: {}",
                         differential.getCondition(), differential.getConfidence());
             }
         }
 
-        // Update consultation status
         consultation.setStatus(ConsultationStatus.IN_PROGRESS);
         consultationRepository.save(consultation);
 
-        // Build response
         DiagnosticResponse response = DiagnosticResponse.builder()
                 .consultationId(consultation.getId())
                 .differentials(differentials)
@@ -106,17 +102,15 @@ public class DiagnosticService {
                 .generatedAt(LocalDateTime.now())
                 .build();
 
-        log.info("Diagnostic analysis completed for consultation ID: {} with {} differentials", 
+        log.info("Diagnostic analysis completed for consultation ID: {} with {} differentials",
                 request.getConsultationId(), differentials.size());
 
         return response;
     }
 
     private ClinicalContext buildClinicalContext(Consultation consultation, Patient patient, DiagnosticRequest request) {
-        // Calculate patient age
         int age = Period.between(patient.getDateOfBirth(), LocalDateTime.now().toLocalDate()).getYears();
 
-        // Build patient summary
         String patientSummary = String.format(
                 "Age: %d years, Gender: %s, Blood Group: %s, Allergies: %s",
                 age,
@@ -125,7 +119,6 @@ public class DiagnosticService {
                 patient.getAllergies() != null ? patient.getAllergies() : "None reported"
         );
 
-        // Join equipment and formulary
         String equipment = request.getAvailableEquipment() != null && !request.getAvailableEquipment().isEmpty()
                 ? String.join(", ", request.getAvailableEquipment())
                 : "Standard primary care equipment";
@@ -134,7 +127,6 @@ public class DiagnosticService {
                 ? String.join(", ", request.getLocalFormulary())
                 : "WHO Essential Medicines List";
 
-        // Build lab results from notes
         String labResults = consultation.getNotes() != null ? consultation.getNotes() : "No lab results available";
         if (request.getAdditionalNotes() != null) {
             labResults += "\nAdditional notes: " + request.getAdditionalNotes();
@@ -150,29 +142,22 @@ public class DiagnosticService {
                 .build();
     }
 
+    private boolean responseContainsKey(String rawResponse, String key) {
+        return rawResponse != null && rawResponse.contains(key);
+    }
+
     private List<String> extractImmediateActions(String rawResponse) {
-        // Simple extraction - in production, parse from JSON
         List<String> actions = new ArrayList<>();
-        try {
-            if (rawResponse.contains("immediateActions")) {
-                // This is a simplified extraction - ResponseParser could be extended
-                actions.add("Review differential diagnosis");
-                actions.add("Monitor vital signs");
-            }
-        } catch (Exception e) {
-            log.warn("Failed to extract immediate actions", e);
+        if (responseContainsKey(rawResponse, "immediateActions")) {
+            actions.add("Review differential diagnosis");
+            actions.add("Monitor vital signs");
         }
         return actions;
     }
 
     private String extractSafetyNotes(String rawResponse) {
-        // Simple extraction - in production, parse from JSON
-        try {
-            if (rawResponse.contains("safetyNotes")) {
-                return "Refer to specialist if condition worsens or does not improve with initial treatment";
-            }
-        } catch (Exception e) {
-            log.warn("Failed to extract safety notes", e);
+        if (responseContainsKey(rawResponse, "safetyNotes")) {
+            return "Refer to specialist if condition worsens or does not improve with initial treatment";
         }
         return "Monitor patient closely and escalate if necessary";
     }
@@ -181,22 +166,18 @@ public class DiagnosticService {
             byte[] imageBytes, String mediaType, String clinicalContext) {
         log.info("Starting image analysis with media type: {}", mediaType);
 
-        // Validate file type
         if (!mediaType.equals("image/jpeg") && !mediaType.equals("image/png")) {
             throw new com.asakaa.synthesis.exception.ValidationException(
                     "Invalid file type. Only JPEG and PNG images are supported.");
         }
 
-        // Validate image size (max 5MB)
         if (imageBytes.length > 5 * 1024 * 1024) {
             throw new com.asakaa.synthesis.exception.ValidationException(
                     "Image file is too large. Maximum size is 5MB.");
         }
 
-        // Build clinical prompt for image analysis
         String prompt = buildImageAnalysisPrompt(clinicalContext);
 
-        // Invoke Bedrock with vision
         String rawResponse;
         try {
             rawResponse = bedrockClient.invokeVision(imageBytes, mediaType, prompt);
@@ -205,8 +186,7 @@ public class DiagnosticService {
             throw new DiagnosticException("Failed to analyze medical image: " + e.getMessage(), e);
         }
 
-        // Parse response
-        com.asakaa.synthesis.domain.dto.response.ImageAnalysisResponse response = parseImageAnalysisResponse(rawResponse);
+        ImageAnalysisResponse response = parseImageAnalysisResponse(rawResponse);
         response.setAnalyzedAt(LocalDateTime.now());
 
         log.info("Image analysis completed successfully");
@@ -240,48 +220,33 @@ public class DiagnosticService {
         return prompt.toString();
     }
 
-    private com.asakaa.synthesis.domain.dto.response.ImageAnalysisResponse parseImageAnalysisResponse(String rawResponse) {
+    private ImageAnalysisResponse parseImageAnalysisResponse(String rawResponse) {
         try {
-            // Extract JSON from response if it contains markdown code blocks
-            String jsonContent = extractJson(rawResponse);
+            String jsonContent = responseParser.extractJson(rawResponse);
 
-            com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
-            com.fasterxml.jackson.databind.JsonNode root = mapper.readTree(jsonContent);
+            JsonNode root = objectMapper.readTree(jsonContent);
 
             String description = root.has("description") ? root.get("description").asText() : rawResponse;
             List<String> findings = new ArrayList<>();
 
             if (root.has("findings") && root.get("findings").isArray()) {
-                for (com.fasterxml.jackson.databind.JsonNode finding : root.get("findings")) {
+                for (JsonNode finding : root.get("findings")) {
                     findings.add(finding.asText());
                 }
             }
 
-            return com.asakaa.synthesis.domain.dto.response.ImageAnalysisResponse.builder()
+            return ImageAnalysisResponse.builder()
                     .description(description)
                     .findings(findings)
                     .build();
 
         } catch (Exception e) {
             log.warn("Failed to parse structured response, returning raw text", e);
-            // Fallback: return raw response as description
-            return com.asakaa.synthesis.domain.dto.response.ImageAnalysisResponse.builder()
+            return ImageAnalysisResponse.builder()
                     .description(rawResponse)
                     .findings(new ArrayList<>())
                     .build();
         }
     }
 
-    private String extractJson(String rawResponse) {
-        String cleaned = rawResponse.trim();
-        if (cleaned.startsWith("```json")) {
-            cleaned = cleaned.substring(7);
-        } else if (cleaned.startsWith("```")) {
-            cleaned = cleaned.substring(3);
-        }
-        if (cleaned.endsWith("```")) {
-            cleaned = cleaned.substring(0, cleaned.length() - 3);
-        }
-        return cleaned.trim();
-    }
 }
