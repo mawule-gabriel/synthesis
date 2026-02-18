@@ -60,6 +60,28 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
     }
 
+    @ExceptionHandler(TranscriptionException.class)
+    public ResponseEntity<ErrorResponse> handleTranscriptionException(TranscriptionException ex) {
+        log.error("Transcription error occurred", ex);
+        ErrorResponse error = ErrorResponse.of(
+                "TRANSCRIPTION_ERROR",
+                ex.getMessage(),
+                HttpStatus.INTERNAL_SERVER_ERROR.value()
+        );
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+    }
+
+    @ExceptionHandler(TranscriptionTimeoutException.class)
+    public ResponseEntity<ErrorResponse> handleTranscriptionTimeout(TranscriptionTimeoutException ex) {
+        log.warn("Transcription timeout: {}", ex.getMessage());
+        ErrorResponse error = ErrorResponse.of(
+                "TRANSCRIPTION_TIMEOUT",
+                ex.getMessage(),
+                HttpStatus.REQUEST_TIMEOUT.value()
+        );
+        return ResponseEntity.status(HttpStatus.REQUEST_TIMEOUT).body(error);
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGenericException(Exception ex) {
         log.error("Unexpected error occurred", ex);

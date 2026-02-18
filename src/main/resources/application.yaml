@@ -31,6 +31,10 @@ aws:
     knowledge-base-id: ${KNOWLEDGE_BASE_ID}
   s3:
     bucket: ${S3_BUCKET:synthesis-attachments}
+  transcribe:
+    region: ${AWS_REGION:us-east-1}
+    s3-bucket: ${TRANSCRIBE_S3_BUCKET:synthesis-transcribe-temp}
+    timeout-seconds: 60
 
 security:
   jwt:
