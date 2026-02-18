@@ -82,14 +82,16 @@ public class DiagnosticService {
                     "Failed to generate diagnostic analysis for consultation " + request.getConsultationId(), e);
         }
 
-        List<DifferentialDto> differentials;
+        ResponseParser.DiagnosticParseResult parseResult;
         try {
-            differentials = responseParser.parseDiagnosticResponse(rawResponse);
+            parseResult = responseParser.parseDiagnosticResponse(rawResponse);
         } catch (Exception e) {
             log.error("Failed to parse Bedrock response for consultation ID: {}", request.getConsultationId(), e);
             throw new DiagnosticException(
                     "Failed to parse diagnostic response for consultation " + request.getConsultationId(), e);
         }
+
+        List<DifferentialDto> differentials = parseResult.differentials();
 
         log.info("Received {} differentials for consultation ID: {}", differentials.size(), request.getConsultationId());
 
@@ -119,12 +121,14 @@ public class DiagnosticService {
                 .differentials(differentials)
                 .immediateActions(extractImmediateActions(rawResponse))
                 .safetyNotes(extractSafetyNotes(rawResponse))
+                .nextQuestions(parseResult.nextQuestions())
+                .physicalExams(parseResult.physicalExams())
                 .citations(citationReferences)
                 .generatedAt(LocalDateTime.now())
                 .build();
 
-        log.info("Diagnostic analysis completed for consultation ID: {} with {} differentials and {} citations",
-                request.getConsultationId(), differentials.size(), citationReferences.size());
+        log.info("Diagnostic analysis completed for consultation ID: {} with {} differentials, {} citations, urgency: {}",
+                request.getConsultationId(), differentials.size(), citationReferences.size(), parseResult.urgencyLevel());
 
         return response;
     }

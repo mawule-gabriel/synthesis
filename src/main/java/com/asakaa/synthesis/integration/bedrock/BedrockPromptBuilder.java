@@ -9,7 +9,7 @@ public class BedrockPromptBuilder {
         return String.format("""
                 You are an expert clinical decision support system designed to assist healthcare providers in resource-constrained environments.
                 
-                Your task is to analyze the patient presentation and provide a differential diagnosis with evidence-based reasoning.
+                Your task is to analyze the patient presentation, provide a differential diagnosis with evidence-based reasoning, and ACTIVELY GUIDE the provider on what to do next.
                 
                 PATIENT INFORMATION:
                 %s
@@ -36,6 +36,9 @@ public class BedrockPromptBuilder {
                 4. Prioritize life-threatening conditions and red flags
                 5. Consider common conditions in underserved/resource-limited settings
                 6. Provide clear clinical reasoning for each differential
+                7. Suggest 3-5 HIGH-YIELD CLINICAL QUESTIONS the provider should ask the patient to narrow the diagnosis
+                8. Suggest 2-4 PHYSICAL EXAMINATIONS the provider should perform next with their available equipment
+                9. Rate the overall urgency: LOW, MODERATE, HIGH, or CRITICAL
                 
                 Return your response as a valid JSON object with this EXACT structure:
                 {
@@ -49,7 +52,16 @@ public class BedrockPromptBuilder {
                     }
                   ],
                   "immediateActions": ["action1", "action2"],
-                  "safetyNotes": "any critical safety considerations"
+                  "safetyNotes": "any critical safety considerations",
+                  "nextQuestions": [
+                    "Ask: Have you traveled to a malaria-endemic area recently?",
+                    "Ask: Do you have any neck stiffness or sensitivity to light?"
+                  ],
+                  "physicalExams": [
+                    "Perform: Check for chest indrawing and count respiratory rate",
+                    "Perform: Assess for neck rigidity (meningeal signs)"
+                  ],
+                  "urgencyLevel": "HIGH"
                 }
                 
                 Ensure confidence scores are between 0.0 and 1.0. Return ONLY the JSON object, no additional text.

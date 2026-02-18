@@ -15,9 +15,15 @@ public class ResponseParser {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    public List<DifferentialDto> parseDiagnosticResponse(String rawResponse) {
+    public record DiagnosticParseResult(
+            List<DifferentialDto> differentials,
+            List<String> nextQuestions,
+            List<String> physicalExams,
+            String urgencyLevel
+    ) {}
+
+    public DiagnosticParseResult parseDiagnosticResponse(String rawResponse) {
         try {
-            // Extract JSON from response if it contains markdown code blocks
             String jsonContent = extractJson(rawResponse);
 
             JsonNode root = objectMapper.readTree(jsonContent);
@@ -41,7 +47,11 @@ public class ResponseParser {
                 result.add(dto);
             }
 
-            return result;
+            List<String> nextQuestions = parseStringArray(root.get("nextQuestions"));
+            List<String> physicalExams = parseStringArray(root.get("physicalExams"));
+            String urgencyLevel = root.has("urgencyLevel") ? root.get("urgencyLevel").asText() : "MODERATE";
+
+            return new DiagnosticParseResult(result, nextQuestions, physicalExams, urgencyLevel);
 
         } catch (Exception e) {
             throw new DiagnosticException("Failed to parse diagnostic response: " + e.getMessage(), e);
@@ -49,7 +59,6 @@ public class ResponseParser {
     }
 
     public String extractJson(String rawResponse) {
-        // Remove markdown code blocks if present
         String cleaned = rawResponse.trim();
         if (cleaned.startsWith("```json")) {
             cleaned = cleaned.substring(7);
@@ -74,7 +83,6 @@ public class ResponseParser {
 
     public List<com.asakaa.synthesis.domain.dto.response.TreatmentResponse> parseTreatmentResponse(String rawResponse) {
         try {
-            // Extract JSON from response if it contains markdown code blocks
             String jsonContent = extractJson(rawResponse);
 
             JsonNode root = objectMapper.readTree(jsonContent);
