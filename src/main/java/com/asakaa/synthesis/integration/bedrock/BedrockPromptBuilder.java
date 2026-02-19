@@ -23,6 +23,9 @@ public class BedrockPromptBuilder {
                 LABORATORY RESULTS:
                 %s
                 
+                IMAGING FINDINGS (AI-INTERPRETED):
+                %s
+                
                 AVAILABLE EQUIPMENT:
                 %s
                 
@@ -68,8 +71,9 @@ public class BedrockPromptBuilder {
                 """,
                 context.getPatientSummary() != null ? context.getPatientSummary() : "Not provided",
                 context.getChiefComplaint() != null ? context.getChiefComplaint() : "Not provided",
-                context.getVitals() != null ? context.getVitals() : "Not provided",
-                context.getLabResults() != null ? context.getLabResults() : "Not provided",
+                context.getVitals() != null ? context.getVitals() : "Not recorded",
+                context.getLabResults() != null ? context.getLabResults() : "None provided",
+                context.getImagingFindings() != null ? context.getImagingFindings() : "No previous imaging analysis found for this consultation",
                 context.getAvailableEquipment() != null ? context.getAvailableEquipment() : "Standard primary care equipment",
                 context.getLocalFormulary() != null ? context.getLocalFormulary() : "WHO Essential Medicines List",
                 context.getAvailableEquipment() != null ? context.getAvailableEquipment() : "Standard primary care equipment",

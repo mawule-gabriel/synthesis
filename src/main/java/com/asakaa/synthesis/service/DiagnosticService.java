@@ -1,10 +1,14 @@
 package com.asakaa.synthesis.service;
 
 import com.asakaa.synthesis.domain.dto.request.DiagnosticRequest;
-import com.asakaa.synthesis.domain.dto.response.*;
+import com.asakaa.synthesis.domain.dto.response.DiagnosticResponse;
+import com.asakaa.synthesis.domain.dto.response.DifferentialDto;
+import com.asakaa.synthesis.domain.dto.response.ImageAnalysisResponse;
+import com.asakaa.synthesis.domain.dto.response.KnowledgeBaseCitation;
 import com.asakaa.synthesis.domain.entity.*;
 import com.asakaa.synthesis.exception.DiagnosticException;
 import com.asakaa.synthesis.exception.ResourceNotFoundException;
+import com.asakaa.synthesis.exception.ValidationException;
 import com.asakaa.synthesis.integration.bedrock.BedrockClient;
 import com.asakaa.synthesis.integration.bedrock.BedrockPromptBuilder;
 import com.asakaa.synthesis.integration.bedrock.ClinicalContext;
@@ -169,6 +173,19 @@ public class DiagnosticService {
             labResults += "\nAdditional notes: " + request.getAdditionalNotes();
         }
 
+        String imagingFindingsText = "No previous imaging analysis found for this consultation.";
+        List<ImageAnalysis> imageAnalyses = imageAnalysisRepository.findByConsultationId(consultation.getId());
+        if (imageAnalyses != null && !imageAnalyses.isEmpty()) {
+            StringBuilder sb = new StringBuilder();
+            for (ImageAnalysis analysis : imageAnalyses) {
+                sb.append(String.format("- Analyzed at %s: %s Findings: %s\n",
+                        analysis.getAnalyzedAt(),
+                        analysis.getDescription(),
+                        String.join(", ", analysis.getFindings())));
+            }
+            imagingFindingsText = sb.toString();
+        }
+
         return ClinicalContext.builder()
                 .patientSummary(patientSummary)
                 .chiefComplaint(consultation.getChiefComplaint())
@@ -176,6 +193,7 @@ public class DiagnosticService {
                 .availableEquipment(equipment)
                 .localFormulary(formulary)
                 .labResults(labResults)
+                .imagingFindings(imagingFindingsText)
                 .build();
     }
 
@@ -205,12 +223,12 @@ public class DiagnosticService {
         log.info("Starting image analysis with media type: {}, consultation ID: {}", mediaType, consultationId);
 
         if (!mediaType.equals("image/jpeg") && !mediaType.equals("image/png")) {
-            throw new com.asakaa.synthesis.exception.ValidationException(
+            throw new ValidationException(
                     "Invalid file type. Only JPEG and PNG images are supported.");
         }
 
         if (imageBytes.length > 5 * 1024 * 1024) {
-            throw new com.asakaa.synthesis.exception.ValidationException(
+            throw new ValidationException(
                     "Image file is too large. Maximum size is 5MB.");
         }
 
@@ -237,7 +255,7 @@ public class DiagnosticService {
                     .findings(response.getFindings())
                     .analyzedAt(response.getAnalyzedAt())
                     .build();
-            
+
             imageAnalysisRepository.save(imageAnalysis);
             log.debug("Persisted image analysis for consultation ID: {}", consultationId);
         }

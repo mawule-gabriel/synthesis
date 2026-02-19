@@ -13,4 +13,5 @@ public class ClinicalContext {
     private String availableEquipment;
     private String localFormulary;
     private String labResults;
+    private String imagingFindings;
 }
