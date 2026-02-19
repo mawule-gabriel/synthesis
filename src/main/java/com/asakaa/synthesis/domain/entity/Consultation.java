@@ -51,4 +51,8 @@ public class Consultation extends BaseEntity {
     @OneToMany(mappedBy = "consultation", cascade = CascadeType.ALL)
     @Builder.Default
     private List<Diagnosis> diagnoses = new ArrayList<>();
+
+    @OneToMany(mappedBy = "consultation", cascade = CascadeType.ALL)
+    @Builder.Default
+    private List<ImageAnalysis> imageAnalyses = new ArrayList<>();
 }

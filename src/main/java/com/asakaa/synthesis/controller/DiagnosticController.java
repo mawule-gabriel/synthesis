@@ -24,6 +24,7 @@ public class DiagnosticController {
     @PostMapping("/analyze-image")
     public ResponseEntity<com.asakaa.synthesis.domain.dto.response.ImageAnalysisResponse> analyzeImage(
             @RequestParam("image") org.springframework.web.multipart.MultipartFile image,
+            @RequestParam(value = "consultationId", required = false) Long consultationId,
             @RequestParam(value = "clinicalContext", required = false) String clinicalContext) {
         
         try {
@@ -44,7 +45,7 @@ public class DiagnosticController {
 
             // Call service
             com.asakaa.synthesis.domain.dto.response.ImageAnalysisResponse response = 
-                    diagnosticService.analyzeImage(imageBytes, mediaType, clinicalContext);
+                    diagnosticService.analyzeImage(imageBytes, mediaType, clinicalContext, consultationId);
 
             return ResponseEntity.ok(response);
 

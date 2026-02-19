@@ -1,14 +1,8 @@
 package com.asakaa.synthesis.service;
 
 import com.asakaa.synthesis.domain.dto.request.DiagnosticRequest;
-import com.asakaa.synthesis.domain.dto.response.DiagnosticResponse;
-import com.asakaa.synthesis.domain.dto.response.DifferentialDto;
-import com.asakaa.synthesis.domain.dto.response.ImageAnalysisResponse;
-import com.asakaa.synthesis.domain.dto.response.KnowledgeBaseCitation;
-import com.asakaa.synthesis.domain.entity.Consultation;
-import com.asakaa.synthesis.domain.entity.ConsultationStatus;
-import com.asakaa.synthesis.domain.entity.Diagnosis;
-import com.asakaa.synthesis.domain.entity.Patient;
+import com.asakaa.synthesis.domain.dto.response.*;
+import com.asakaa.synthesis.domain.entity.*;
 import com.asakaa.synthesis.exception.DiagnosticException;
 import com.asakaa.synthesis.exception.ResourceNotFoundException;
 import com.asakaa.synthesis.integration.bedrock.BedrockClient;
@@ -16,6 +10,7 @@ import com.asakaa.synthesis.integration.bedrock.BedrockPromptBuilder;
 import com.asakaa.synthesis.integration.bedrock.ClinicalContext;
 import com.asakaa.synthesis.repository.ConsultationRepository;
 import com.asakaa.synthesis.repository.DiagnosisRepository;
+import com.asakaa.synthesis.repository.ImageAnalysisRepository;
 import com.asakaa.synthesis.util.ResponseParser;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -37,6 +32,7 @@ public class DiagnosticService {
 
     private final ConsultationRepository consultationRepository;
     private final DiagnosisRepository diagnosisRepository;
+    private final ImageAnalysisRepository imageAnalysisRepository;
     private final BedrockPromptBuilder bedrockPromptBuilder;
     private final BedrockClient bedrockClient;
     private final ResponseParser responseParser;
@@ -203,9 +199,10 @@ public class DiagnosticService {
         return "Monitor patient closely and escalate if necessary";
     }
 
+    @Transactional
     public com.asakaa.synthesis.domain.dto.response.ImageAnalysisResponse analyzeImage(
-            byte[] imageBytes, String mediaType, String clinicalContext) {
-        log.info("Starting image analysis with media type: {}", mediaType);
+            byte[] imageBytes, String mediaType, String clinicalContext, Long consultationId) {
+        log.info("Starting image analysis with media type: {}, consultation ID: {}", mediaType, consultationId);
 
         if (!mediaType.equals("image/jpeg") && !mediaType.equals("image/png")) {
             throw new com.asakaa.synthesis.exception.ValidationException(
@@ -229,6 +226,21 @@ public class DiagnosticService {
 
         ImageAnalysisResponse response = parseImageAnalysisResponse(rawResponse);
         response.setAnalyzedAt(LocalDateTime.now());
+
+        if (consultationId != null) {
+            Consultation consultation = consultationRepository.findById(consultationId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Consultation", consultationId));
+
+            ImageAnalysis imageAnalysis = ImageAnalysis.builder()
+                    .consultation(consultation)
+                    .description(response.getDescription())
+                    .findings(response.getFindings())
+                    .analyzedAt(response.getAnalyzedAt())
+                    .build();
+            
+            imageAnalysisRepository.save(imageAnalysis);
+            log.debug("Persisted image analysis for consultation ID: {}", consultationId);
+        }
 
         log.info("Image analysis completed successfully");
         return response;

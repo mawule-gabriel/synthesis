@@ -101,7 +101,6 @@ public class EscalationService {
 
         summary.append("=== SPECIALIST REFERRAL CASE SUMMARY ===\n\n");
 
-        // Patient Demographics
         summary.append("PATIENT INFORMATION:\n");
         summary.append(String.format("- Name: %s %s\n", patient.getFirstName(), patient.getLastName()));
         summary.append(String.format("- Age: %d years\n", age));
@@ -110,20 +109,17 @@ public class EscalationService {
         summary.append(String.format("- Allergies: %s\n", patient.getAllergies() != null ? patient.getAllergies() : "None reported"));
         summary.append(String.format("- Clinic: %s\n\n", patient.getClinicName() != null ? patient.getClinicName() : "Not specified"));
 
-        // Consultation Details
         summary.append("CONSULTATION DETAILS:\n");
         summary.append(String.format("- Chief Complaint: %s\n", consultation.getChiefComplaint()));
         summary.append(String.format("- Vital Signs: %s\n", consultation.getVitals() != null ? consultation.getVitals() : "Not recorded"));
         summary.append(String.format("- Consultation Date: %s\n", consultation.getOpenedAt()));
         summary.append(String.format("- Provider: %s\n\n", consultation.getProvider().getName()));
 
-        // Clinical Notes
         if (consultation.getNotes() != null && !consultation.getNotes().isEmpty()) {
             summary.append("CLINICAL NOTES:\n");
             summary.append(consultation.getNotes()).append("\n\n");
         }
 
-        // Diagnoses
         if (!consultation.getDiagnoses().isEmpty()) {
             summary.append("DIFFERENTIAL DIAGNOSES:\n");
             consultation.getDiagnoses().stream()
@@ -137,7 +133,6 @@ public class EscalationService {
             summary.append("\n");
         }
 
-        // Treatments
         if (!consultation.getDiagnoses().isEmpty()) {
             boolean hasTreatments = consultation.getDiagnoses().stream()
                     .anyMatch(d -> !d.getTreatments().isEmpty());
@@ -160,7 +155,20 @@ public class EscalationService {
             }
         }
 
-        // Referral Details
+
+        if (!consultation.getImageAnalyses().isEmpty()) {
+            summary.append("IMAGING FINDINGS (AI-INTERPRETED):\n");
+            consultation.getImageAnalyses().forEach(analysis -> {
+                summary.append(String.format("- Analyzed at: %s\n", analysis.getAnalyzedAt()));
+                summary.append(String.format("  Assessment: %s\n", analysis.getDescription()));
+                if (!analysis.getFindings().isEmpty()) {
+                    summary.append("  Key Findings: ").append(String.join(", ", analysis.getFindings())).append("\n");
+                }
+            });
+            summary.append("\n");
+        }
+
+
         summary.append("REFERRAL INFORMATION:\n");
         summary.append(String.format("- Specialist Type: %s\n", request.getSpecialistType()));
         summary.append(String.format("- Urgency Level: %s\n", request.getUrgencyLevel() != null ? request.getUrgencyLevel() : "ROUTINE"));
