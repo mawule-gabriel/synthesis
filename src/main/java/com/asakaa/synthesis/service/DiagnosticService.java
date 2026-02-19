@@ -15,6 +15,7 @@ import com.asakaa.synthesis.integration.bedrock.ClinicalContext;
 import com.asakaa.synthesis.repository.ConsultationRepository;
 import com.asakaa.synthesis.repository.DiagnosisRepository;
 import com.asakaa.synthesis.repository.ImageAnalysisRepository;
+import com.asakaa.synthesis.repository.LabResultRepository;
 import com.asakaa.synthesis.util.ResponseParser;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -37,6 +38,7 @@ public class DiagnosticService {
     private final ConsultationRepository consultationRepository;
     private final DiagnosisRepository diagnosisRepository;
     private final ImageAnalysisRepository imageAnalysisRepository;
+    private final LabResultRepository labResultRepository;
     private final BedrockPromptBuilder bedrockPromptBuilder;
     private final BedrockClient bedrockClient;
     private final ResponseParser responseParser;
@@ -168,9 +170,23 @@ public class DiagnosticService {
                 ? String.join(", ", request.getLocalFormulary())
                 : "WHO Essential Medicines List";
 
-        String labResults = consultation.getNotes() != null ? consultation.getNotes() : "No lab results available";
+        String labResultsText = "No laboratory results available.";
+        List<LabResult> labResults = labResultRepository.findByConsultationId(consultation.getId());
+        if (labResults != null && !labResults.isEmpty()) {
+            StringBuilder sb = new StringBuilder();
+            for (LabResult lab : labResults) {
+                sb.append(String.format("- %s: %s %s (%s, %s)\n",
+                        lab.getTestName(),
+                        lab.getNumericValue() != null ? lab.getNumericValue().toString() : "N/A",
+                        lab.getUnit() != null ? lab.getUnit() : "",
+                        lab.getIsAbnormal() != null && lab.getIsAbnormal() ? "ABNORMAL" : "Normal",
+                        lab.getReferenceRange() != null ? "Ref: " + lab.getReferenceRange() : "No ref range"));
+            }
+            labResultsText = sb.toString();
+        }
+
         if (request.getAdditionalNotes() != null) {
-            labResults += "\nAdditional notes: " + request.getAdditionalNotes();
+            labResultsText += "\nAdditional notes: " + request.getAdditionalNotes();
         }
 
         String imagingFindingsText = "No previous imaging analysis found for this consultation.";
@@ -192,7 +208,7 @@ public class DiagnosticService {
                 .vitals(consultation.getVitals() != null ? consultation.getVitals() : "Not recorded")
                 .availableEquipment(equipment)
                 .localFormulary(formulary)
-                .labResults(labResults)
+                .labResults(labResultsText)
                 .imagingFindings(imagingFindingsText)
                 .build();
     }

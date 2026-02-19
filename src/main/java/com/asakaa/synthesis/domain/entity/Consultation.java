@@ -1,10 +1,7 @@
 package com.asakaa.synthesis.domain.entity;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
@@ -12,6 +9,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
+@EqualsAndHashCode(callSuper = true)
 @Data
 @Builder
 @NoArgsConstructor
@@ -55,4 +53,8 @@ public class Consultation extends BaseEntity {
     @OneToMany(mappedBy = "consultation", cascade = CascadeType.ALL)
     @Builder.Default
     private List<ImageAnalysis> imageAnalyses = new ArrayList<>();
+
+    @OneToMany(mappedBy = "consultation", cascade = CascadeType.ALL)
+    @Builder.Default
+    private List<LabResult> labResults = new ArrayList<>();
 }

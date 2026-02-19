@@ -168,6 +168,19 @@ public class EscalationService {
             summary.append("\n");
         }
 
+        if (!consultation.getLabResults().isEmpty()) {
+            summary.append("LABORATORY RESULTS:\n");
+            consultation.getLabResults().forEach(lab -> {
+                summary.append(String.format("- %s: %s %s (%s, %s)\n",
+                        lab.getTestName(),
+                        lab.getNumericValue() != null ? lab.getNumericValue().toString() : "N/A",
+                        lab.getUnit() != null ? lab.getUnit() : "",
+                        lab.getIsAbnormal() != null && lab.getIsAbnormal() ? "ABNORMAL" : "Normal",
+                        lab.getReferenceRange() != null ? "Ref: " + lab.getReferenceRange() : "No ref range"));
+            });
+            summary.append("\n");
+        }
+
 
         summary.append("REFERRAL INFORMATION:\n");
         summary.append(String.format("- Specialist Type: %s\n", request.getSpecialistType()));
