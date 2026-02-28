@@ -285,7 +285,7 @@ public class DiagnosticService {
             }
         }
 
-        events.sort(Comparator.comparing(PatientHistoryTimelineEvent::getEventDate));
+        events.sort(Comparator.comparing(PatientHistoryTimelineEvent::getEventDate, Comparator.nullsLast(Comparator.naturalOrder())));
 
         return PatientHistoryTimeline.builder()
                 .patientId(String.valueOf(patient.getId()))

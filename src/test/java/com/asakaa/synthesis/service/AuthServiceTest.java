@@ -61,13 +61,12 @@ class AuthServiceTest {
                 .password("password123")
                 .build();
 
-        provider = Provider.builder()
-                .id(1L)
-                .name("Dr. Smith")
-                .role("Doctor")
-                .email("smith@example.com")
-                .passwordHash("hashedPassword")
-                .build();
+        provider = new Provider();
+        provider.setId(1L);
+        provider.setName("Dr. Smith");
+        provider.setRole("Doctor");
+        provider.setEmail("smith@example.com");
+        provider.setPasswordHash("hashedPassword");
     }
 
     @Test

@@ -14,7 +14,10 @@ import com.asakaa.synthesis.integration.bedrock.BedrockPromptBuilder;
 import com.asakaa.synthesis.integration.bedrock.ClinicalContext;
 import com.asakaa.synthesis.repository.ConsultationRepository;
 import com.asakaa.synthesis.repository.DiagnosisRepository;
+import com.asakaa.synthesis.repository.ImageAnalysisRepository;
+import com.asakaa.synthesis.repository.LabResultRepository;
 import com.asakaa.synthesis.util.ResponseParser;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -43,6 +46,12 @@ class DiagnosticServiceTest {
     private DiagnosisRepository diagnosisRepository;
 
     @Mock
+    private ImageAnalysisRepository imageAnalysisRepository;
+
+    @Mock
+    private LabResultRepository labResultRepository;
+
+    @Mock
     private BedrockPromptBuilder bedrockPromptBuilder;
 
     @Mock
@@ -50,6 +59,12 @@ class DiagnosticServiceTest {
 
     @Mock
     private ResponseParser responseParser;
+
+    @Mock
+    private KnowledgeBaseService knowledgeBaseService;
+
+    @Mock
+    private ObjectMapper objectMapper;
 
     @InjectMocks
     private DiagnosticService diagnosticService;
@@ -67,30 +82,27 @@ class DiagnosticServiceTest {
                 .localFormulary(List.of("Paracetamol", "Amoxicillin"))
                 .build();
 
-        patient = Patient.builder()
-                .id(1L)
-                .firstName("John")
-                .lastName("Doe")
-                .dateOfBirth(LocalDate.of(1990, 1, 1))
-                .gender("Male")
-                .bloodGroup("O+")
-                .build();
+        patient = new Patient();
+        patient.setId(1L);
+        patient.setFirstName("John");
+        patient.setLastName("Doe");
+        patient.setDateOfBirth(LocalDate.of(1990, 1, 1));
+        patient.setGender("Male");
+        patient.setBloodGroup("O+");
 
-        provider = Provider.builder()
-                .id(1L)
-                .name("Dr. Smith")
-                .build();
+        provider = new Provider();
+        provider.setId(1L);
+        provider.setName("Dr. Smith");
 
-        consultation = Consultation.builder()
-                .id(1L)
-                .patient(patient)
-                .provider(provider)
-                .status(ConsultationStatus.OPEN)
-                .chiefComplaint("Fever and cough")
-                .vitals("{\"temperature\": 38.5}")
-                .openedAt(LocalDateTime.now())
-                .diagnoses(new ArrayList<>())
-                .build();
+        consultation = new Consultation();
+        consultation.setId(1L);
+        consultation.setPatient(patient);
+        consultation.setProvider(provider);
+        consultation.setStatus(ConsultationStatus.OPEN);
+        consultation.setChiefComplaint("Fever and cough");
+        consultation.setVitals("{\"temperature\": 38.5}");
+        consultation.setOpenedAt(LocalDateTime.now());
+        consultation.setDiagnoses(new ArrayList<>());
     }
 
     @Test
@@ -110,9 +122,15 @@ class DiagnosticServiceTest {
         );
 
         when(consultationRepository.findById(1L)).thenReturn(Optional.of(consultation));
+        when(labResultRepository.findByConsultationId(1L)).thenReturn(List.of());
+        when(imageAnalysisRepository.findByConsultationId(1L)).thenReturn(List.of());
+        when(knowledgeBaseService.queryGuidelines(anyString())).thenReturn(List.of());
+        when(knowledgeBaseService.formatCitationsForPrompt(any())).thenReturn("");
+        when(knowledgeBaseService.extractCitationReferences(any(), any())).thenReturn(List.of());
         when(bedrockPromptBuilder.buildDiagnosticPrompt(any(ClinicalContext.class))).thenReturn("prompt");
         when(bedrockClient.invoke(anyString())).thenReturn("{\"differentials\": []}");
-        when(responseParser.parseDiagnosticResponse(anyString())).thenReturn(differentials);
+        when(responseParser.parseDiagnosticResponse(anyString())).thenReturn(
+                new ResponseParser.DiagnosticParseResult(differentials, List.of(), List.of(), "MODERATE"));
 
         // Act
         DiagnosticResponse response = diagnosticService.analyze(request);

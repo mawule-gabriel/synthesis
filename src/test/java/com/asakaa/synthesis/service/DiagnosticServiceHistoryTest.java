@@ -17,8 +17,13 @@ import java.util.Collections;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
+import org.mockito.ArgumentCaptor;
+
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -234,6 +239,23 @@ class DiagnosticServiceHistoryTest {
         assertTrue(result.contains("Consultation: Headache"), "Should contain consultation event");
         assertTrue(result.contains("Diagnosis: Migraine"), "Should contain diagnosis event");
         assertTrue(result.contains("2025-10-01"), "Should contain formatted date");
+    }
+
+    @Test
+    void buildPatientHistoryTimeline_queriesSixMonthWindow() {
+        Patient patient = new Patient();
+        patient.setId(1L);
+        when(consultationRepository.findByPatientIdAndOpenedAtAfterOrderByOpenedAtAsc(anyLong(), any(LocalDateTime.class)))
+                .thenReturn(List.of());
+
+        diagnosticService.buildPatientHistoryTimeline(patient);
+
+        ArgumentCaptor<LocalDateTime> captor = ArgumentCaptor.forClass(LocalDateTime.class);
+        verify(consultationRepository).findByPatientIdAndOpenedAtAfterOrderByOpenedAtAsc(eq(1L), captor.capture());
+        LocalDateTime captured = captor.getValue();
+        LocalDateTime expectedApprox = LocalDateTime.now().minusMonths(6);
+        assertTrue(captured.isAfter(expectedApprox.minusMinutes(1)));
+        assertTrue(captured.isBefore(expectedApprox.plusMinutes(1)));
     }
 
     private Consultation buildConsultation(Long id, Patient patient, String complaint, LocalDateTime openedAt) {

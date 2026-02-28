@@ -112,7 +112,7 @@ class BedrockVisionClientTest {
         );
 
         assertTrue(exception.getMessage().contains("Unsupported media type"));
-        verify(bedrockRuntimeClient, never()).invokeModel(any());
+        verify(bedrockRuntimeClient, never()).invokeModel(any(software.amazon.awssdk.services.bedrockruntime.model.InvokeModelRequest.class));
     }
 
     @Test

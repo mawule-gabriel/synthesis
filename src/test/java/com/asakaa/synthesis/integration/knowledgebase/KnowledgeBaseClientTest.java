@@ -50,7 +50,7 @@ class KnowledgeBaseClientTest {
                 .s3Location(s3Location)
                 .build();
 
-        RetrievalResultLocation result = RetrievalResultLocation.builder()
+        KnowledgeBaseRetrievalResult result = KnowledgeBaseRetrievalResult.builder()
                 .content(content)
                 .location(location)
                 .score(0.95)

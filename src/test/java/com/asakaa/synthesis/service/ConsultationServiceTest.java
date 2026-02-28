@@ -48,28 +48,25 @@ class ConsultationServiceTest {
 
     @BeforeEach
     void setUp() {
-        patient = Patient.builder()
-                .id(1L)
-                .firstName("John")
-                .lastName("Doe")
-                .dateOfBirth(LocalDate.of(1990, 1, 1))
-                .build();
+        patient = new Patient();
+        patient.setId(1L);
+        patient.setFirstName("John");
+        patient.setLastName("Doe");
+        patient.setDateOfBirth(LocalDate.of(1990, 1, 1));
 
-        provider = Provider.builder()
-                .id(1L)
-                .name("Dr. Smith")
-                .build();
+        provider = new Provider();
+        provider.setId(1L);
+        provider.setName("Dr. Smith");
 
-        consultation = Consultation.builder()
-                .id(1L)
-                .patient(patient)
-                .provider(provider)
-                .status(ConsultationStatus.OPEN)
-                .chiefComplaint("Fever")
-                .vitals("{\"temp\": 38}")
-                .openedAt(LocalDateTime.now())
-                .diagnoses(new ArrayList<>())
-                .build();
+        consultation = new Consultation();
+        consultation.setId(1L);
+        consultation.setPatient(patient);
+        consultation.setProvider(provider);
+        consultation.setStatus(ConsultationStatus.OPEN);
+        consultation.setChiefComplaint("Fever");
+        consultation.setVitals("{\"temp\": 38}");
+        consultation.setOpenedAt(LocalDateTime.now());
+        consultation.setDiagnoses(new ArrayList<>());
     }
 
     @Test

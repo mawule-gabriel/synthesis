@@ -48,14 +48,13 @@ class PatientServiceTest {
                 .gender("Male")
                 .build();
 
-        patient = Patient.builder()
-                .id(1L)
-                .nationalId("12345")
-                .firstName("John")
-                .lastName("Doe")
-                .dateOfBirth(LocalDate.of(1990, 1, 1))
-                .gender("Male")
-                .build();
+        patient = new Patient();
+        patient.setId(1L);
+        patient.setNationalId("12345");
+        patient.setFirstName("John");
+        patient.setLastName("Doe");
+        patient.setDateOfBirth(LocalDate.of(1990, 1, 1));
+        patient.setGender("Male");
 
         response = PatientResponse.builder()
                 .id(1L)
