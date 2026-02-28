@@ -18,6 +18,8 @@ public interface ConsultationRepository extends JpaRepository<Consultation, Long
 
     List<Consultation> findByPatientId(Long patientId);
 
+    List<Consultation> findByPatientIdAndOpenedAtAfterOrderByOpenedAtAsc(Long patientId, LocalDateTime openedAfter);
+
     @Query("""
             SELECT d.conditionName as condition, pat.region as region, COUNT(c.id) as count
             FROM Consultation c
