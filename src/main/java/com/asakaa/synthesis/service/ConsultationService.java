@@ -9,17 +9,20 @@ import com.asakaa.synthesis.domain.entity.Consultation;
 import com.asakaa.synthesis.domain.entity.ConsultationStatus;
 import com.asakaa.synthesis.domain.entity.Patient;
 import com.asakaa.synthesis.domain.entity.Provider;
+import com.asakaa.synthesis.exception.ClinicAccessDeniedException;
 import com.asakaa.synthesis.exception.ResourceNotFoundException;
 import com.asakaa.synthesis.exception.ValidationException;
 import com.asakaa.synthesis.repository.ConsultationRepository;
 import com.asakaa.synthesis.repository.PatientRepository;
 import com.asakaa.synthesis.repository.ProviderRepository;
+import com.asakaa.synthesis.security.ClinicAccessGuard;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.json.JsonReadFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,15 +37,18 @@ public class ConsultationService {
 
     private final ConsultationRepository consultationRepository;
     private final PatientRepository patientRepository;
-        private final ProviderRepository providerRepository;
-        private final ObjectMapper objectMapper;
+    private final ProviderRepository providerRepository;
+    private final ObjectMapper objectMapper;
+    private final ClinicAccessGuard clinicAccessGuard;
 
     @Transactional
-    public ConsultationResponse openConsultation(ConsultationRequest request, Long providerId) {
+    public ConsultationResponse openConsultation(ConsultationRequest request, Long providerId, Authentication authentication) {
         log.info("Opening consultation for patient ID: {} by provider ID: {}", request.getPatientId(), providerId);
 
         Patient patient = patientRepository.findById(request.getPatientId())
                 .orElseThrow(() -> new ResourceNotFoundException("Patient", request.getPatientId()));
+
+        clinicAccessGuard.verifyPatientAccess(authentication, patient);
 
         Provider provider = providerRepository.findById(providerId)
                 .orElseThrow(() -> new ResourceNotFoundException("Provider", providerId));
@@ -64,11 +70,13 @@ public class ConsultationService {
     }
 
     @Transactional
-    public ConsultationResponse updateConsultation(Long id, ConsultationUpdateRequest request) {
+    public ConsultationResponse updateConsultation(Long id, ConsultationUpdateRequest request, Authentication authentication) {
         log.info("Updating consultation with ID: {}", id);
 
         Consultation consultation = consultationRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Consultation", id));
+
+        clinicAccessGuard.verifyConsultationAccess(authentication, consultation);
 
         if (request.getVitals() != null) {
             consultation.setVitals(normalizeVitalsJson(request.getVitals()));
@@ -87,11 +95,13 @@ public class ConsultationService {
     }
 
     @Transactional
-    public ConsultationResponse closeConsultation(Long id) {
+    public ConsultationResponse closeConsultation(Long id, Authentication authentication) {
         log.info("Closing consultation with ID: {}", id);
 
         Consultation consultation = consultationRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Consultation", id));
+
+        clinicAccessGuard.verifyConsultationAccess(authentication, consultation);
 
         consultation.setStatus(ConsultationStatus.CLOSED);
         consultation.setClosedAt(LocalDateTime.now());
@@ -102,17 +112,24 @@ public class ConsultationService {
         return toResponse(consultation);
     }
 
-    public ConsultationResponse getConsultationById(Long id) {
+    public ConsultationResponse getConsultationById(Long id, Authentication authentication) {
         log.info("Fetching consultation with ID: {}", id);
 
         Consultation consultation = consultationRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Consultation", id));
 
+        clinicAccessGuard.verifyConsultationAccess(authentication, consultation);
+
         return toResponse(consultation);
     }
 
-    public List<ConsultationResponse> getActiveConsultationsByProvider(Long providerId) {
+    public List<ConsultationResponse> getActiveConsultationsByProvider(Long providerId, Authentication authentication) {
         log.info("Fetching active consultations for provider ID: {}", providerId);
+
+        Provider authProvider = clinicAccessGuard.getCurrentProvider(authentication);
+        if (!clinicAccessGuard.isSuperAdmin(authentication) && !authProvider.getId().equals(providerId)) {
+            throw new ClinicAccessDeniedException("Cannot fetch other provider's active consultations");
+        }
 
         List<Consultation> consultations = consultationRepository.findByProviderIdAndStatus(
                 providerId, ConsultationStatus.OPEN);
@@ -122,8 +139,13 @@ public class ConsultationService {
                 .collect(Collectors.toList());
     }
 
-    public List<ConsultationResponse> getConsultationsByPatient(Long patientId) {
+    public List<ConsultationResponse> getConsultationsByPatient(Long patientId, Authentication authentication) {
         log.info("Fetching consultations for patient ID: {}", patientId);
+
+        Patient patient = patientRepository.findById(patientId)
+                .orElseThrow(() -> new ResourceNotFoundException("Patient", patientId));
+                
+        clinicAccessGuard.verifyPatientAccess(authentication, patient);
 
         List<Consultation> consultations = consultationRepository.findByPatientId(patientId);
 
@@ -167,22 +189,22 @@ public class ConsultationService {
                 .build();
     }
 
-        private String normalizeVitalsJson(String vitals) {
-                if (vitals == null || vitals.isBlank()) {
-                        return null;
-                }
-
-                try {
-                        ObjectMapper mapper = objectMapper.copy();
-                        mapper.enable(JsonReadFeature.ALLOW_SINGLE_QUOTES.mappedFeature());
-                        JsonNode jsonNode = mapper.readTree(vitals);
-                        if (jsonNode.isTextual()) {
-                                String nestedJson = jsonNode.asText();
-                                jsonNode = mapper.readTree(nestedJson);
-                        }
-                        return mapper.writeValueAsString(jsonNode);
-                } catch (JsonProcessingException ex) {
-                        throw new ValidationException("Vitals must be valid JSON.");
-                }
+    private String normalizeVitalsJson(String vitals) {
+        if (vitals == null || vitals.isBlank()) {
+            return null;
         }
+
+        try {
+            ObjectMapper mapper = objectMapper.copy();
+            mapper.enable(JsonReadFeature.ALLOW_SINGLE_QUOTES.mappedFeature());
+            JsonNode jsonNode = mapper.readTree(vitals);
+            if (jsonNode.isTextual()) {
+                String nestedJson = jsonNode.asText();
+                jsonNode = mapper.readTree(nestedJson);
+            }
+            return mapper.writeValueAsString(jsonNode);
+        } catch (JsonProcessingException ex) {
+            throw new ValidationException("Vitals must be valid JSON.");
+        }
+    }
 }

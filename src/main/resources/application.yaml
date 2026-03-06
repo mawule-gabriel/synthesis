@@ -41,6 +41,11 @@ security:
     secret: ${JWT_SECRET}
     expiration-ms: 86400000
 
+app:
+  superadmin:
+    email: ${SUPER_ADMIN_EMAIL}
+    password: ${SUPER_ADMIN_PASSWORD}
+
 synthesis:
   ai:
     max-tokens: 2048

@@ -66,7 +66,7 @@ public class ClinicService {
         log.info("Clinic '{}' registered with code '{}' and admin '{}'",
                 clinic.getName(), registrationCode, admin.getEmail());
 
-        String token = jwtUtil.generateToken(admin.getEmail());
+        String token = jwtUtil.generateToken(admin.getEmail(), admin.getRole());
 
         return AuthResponse.builder()
                 .token(token)

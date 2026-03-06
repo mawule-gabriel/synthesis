@@ -31,33 +31,40 @@ public class ConsultationController {
                 .orElseThrow(() -> new RuntimeException("Provider not found"))
                 .getId();
 
-        ConsultationResponse response = consultationService.openConsultation(request, providerId);
+        ConsultationResponse response = consultationService.openConsultation(request, providerId, authentication);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<ConsultationResponse> updateConsultation(
             @PathVariable Long id,
-            @Valid @RequestBody ConsultationUpdateRequest request) {
-        ConsultationResponse response = consultationService.updateConsultation(id, request);
+            @Valid @RequestBody ConsultationUpdateRequest request,
+            Authentication authentication) {
+        ConsultationResponse response = consultationService.updateConsultation(id, request, authentication);
         return ResponseEntity.ok(response);
     }
 
     @PostMapping("/{id}/close")
-    public ResponseEntity<ConsultationResponse> closeConsultation(@PathVariable Long id) {
-        ConsultationResponse response = consultationService.closeConsultation(id);
+    public ResponseEntity<ConsultationResponse> closeConsultation(
+            @PathVariable Long id,
+            Authentication authentication) {
+        ConsultationResponse response = consultationService.closeConsultation(id, authentication);
         return ResponseEntity.ok(response);
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ConsultationResponse> getConsultationById(@PathVariable Long id) {
-        ConsultationResponse response = consultationService.getConsultationById(id);
+    public ResponseEntity<ConsultationResponse> getConsultationById(
+            @PathVariable Long id,
+            Authentication authentication) {
+        ConsultationResponse response = consultationService.getConsultationById(id, authentication);
         return ResponseEntity.ok(response);
     }
 
     @GetMapping("/{id}/history")
-    public ResponseEntity<ConsultationResponse> getConsultationHistory(@PathVariable Long id) {
-        ConsultationResponse response = consultationService.getConsultationById(id);
+    public ResponseEntity<ConsultationResponse> getConsultationHistory(
+            @PathVariable Long id,
+            Authentication authentication) {
+        ConsultationResponse response = consultationService.getConsultationById(id, authentication);
         return ResponseEntity.ok(response);
     }
 
@@ -68,12 +75,15 @@ public class ConsultationController {
                 .orElseThrow(() -> new RuntimeException("Provider not found"))
                 .getId();
 
-        List<ConsultationResponse> response = consultationService.getActiveConsultationsByProvider(providerId);
+        List<ConsultationResponse> response = consultationService.getActiveConsultationsByProvider(providerId, authentication);
         return ResponseEntity.ok(response);
     }
+
     @GetMapping("/patient/{patientId}/history")
-    public ResponseEntity<List<ConsultationResponse>> getPatientConsultationHistory(@PathVariable Long patientId) {
-        List<ConsultationResponse> response = consultationService.getConsultationsByPatient(patientId);
+    public ResponseEntity<List<ConsultationResponse>> getPatientConsultationHistory(
+            @PathVariable Long patientId,
+            Authentication authentication) {
+        List<ConsultationResponse> response = consultationService.getConsultationsByPatient(patientId, authentication);
         return ResponseEntity.ok(response);
     }
 

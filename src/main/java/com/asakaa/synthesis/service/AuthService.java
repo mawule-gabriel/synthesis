@@ -29,6 +29,10 @@ public class AuthService {
             throw new ValidationException("Email already registered");
         }
 
+        if ("SUPER_ADMIN".equalsIgnoreCase(request.getRole())) {
+            throw new ValidationException("Cannot register as SUPER_ADMIN via public endpoint");
+        }
+
         // Look up clinic by registration code
         Clinic clinic = null;
         if (request.getClinicRegistrationCode() != null && !request.getClinicRegistrationCode().isBlank()) {
@@ -47,7 +51,7 @@ public class AuthService {
 
         provider = providerRepository.save(provider);
 
-        String token = jwtUtil.generateToken(provider.getEmail());
+        String token = jwtUtil.generateToken(provider.getEmail(), provider.getRole());
 
         AuthResponse.AuthResponseBuilder responseBuilder = AuthResponse.builder()
                 .token(token)
@@ -72,7 +76,7 @@ public class AuthService {
             throw new ValidationException("Invalid email or password");
         }
 
-        String token = jwtUtil.generateToken(provider.getEmail());
+        String token = jwtUtil.generateToken(provider.getEmail(), provider.getRole());
 
         AuthResponse.AuthResponseBuilder responseBuilder = AuthResponse.builder()
                 .token(token)

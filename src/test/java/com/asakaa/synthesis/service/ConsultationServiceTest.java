@@ -17,6 +17,11 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.core.Authentication;
+import com.asakaa.synthesis.security.ClinicAccessGuard;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -38,6 +43,12 @@ class ConsultationServiceTest {
 
     @Mock
     private ProviderRepository providerRepository;
+
+    @Mock
+    private ClinicAccessGuard clinicAccessGuard;
+
+    @Mock
+    private Authentication authentication;
 
     @InjectMocks
     private ConsultationService consultationService;
@@ -86,7 +97,7 @@ class ConsultationServiceTest {
         when(consultationRepository.save(any(Consultation.class))).thenReturn(consultation);
 
         // Act
-        ConsultationResponse response = consultationService.openConsultation(request, 1L);
+        ConsultationResponse response = consultationService.openConsultation(request, 1L, authentication);
 
         // Assert
         ArgumentCaptor<Consultation> captor = ArgumentCaptor.forClass(Consultation.class);
@@ -105,7 +116,7 @@ class ConsultationServiceTest {
         when(consultationRepository.save(any(Consultation.class))).thenReturn(consultation);
 
         // Act
-        ConsultationResponse response = consultationService.closeConsultation(1L);
+        ConsultationResponse response = consultationService.closeConsultation(1L, authentication);
 
         // Assert
         ArgumentCaptor<Consultation> captor = ArgumentCaptor.forClass(Consultation.class);
@@ -128,7 +139,7 @@ class ConsultationServiceTest {
         when(consultationRepository.save(any(Consultation.class))).thenReturn(consultation);
 
         // Act
-        ConsultationResponse response = consultationService.updateConsultation(1L, request);
+        ConsultationResponse response = consultationService.updateConsultation(1L, request, authentication);
 
         // Assert
         ArgumentCaptor<Consultation> captor = ArgumentCaptor.forClass(Consultation.class);

@@ -23,6 +23,17 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
     }
 
+    @ExceptionHandler(ClinicAccessDeniedException.class)
+    public ResponseEntity<ErrorResponse> handleClinicAccessDenied(ClinicAccessDeniedException ex) {
+        log.warn("Clinic access denied: {}", ex.getMessage());
+        ErrorResponse error = ErrorResponse.of(
+                "CLINIC_ACCESS_DENIED",
+                ex.getMessage(),
+                HttpStatus.FORBIDDEN.value()
+        );
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
+    }
+
     @ExceptionHandler(DiagnosticException.class)
     public ResponseEntity<ErrorResponse> handleDiagnosticException(DiagnosticException ex) {
         log.error("Diagnostic error occurred", ex);

@@ -16,7 +16,9 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
-import java.util.ArrayList;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+
+import java.util.List;
 
 @Configuration
 @EnableWebSecurity
@@ -45,11 +47,15 @@ public class SecurityConfig {
     @Bean
     public UserDetailsService userDetailsService() {
         return email -> providerRepository.findByEmail(email)
-                .map(provider -> org.springframework.security.core.userdetails.User.builder()
-                        .username(provider.getEmail())
-                        .password(provider.getPasswordHash())
-                        .authorities(new ArrayList<>())
-                        .build())
+                .map(provider -> {
+                    String role = provider.getRole() != null ? provider.getRole() : "PROVIDER";
+                    var authorities = List.of(new SimpleGrantedAuthority("ROLE_" + role));
+                    return org.springframework.security.core.userdetails.User.builder()
+                            .username(provider.getEmail())
+                            .password(provider.getPasswordHash())
+                            .authorities(authorities)
+                            .build();
+                })
                 .orElseThrow(() -> new UsernameNotFoundException("Provider not found with email: " + email));
     }
 

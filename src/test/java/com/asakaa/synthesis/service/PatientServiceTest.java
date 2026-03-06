@@ -7,11 +7,13 @@ import com.asakaa.synthesis.exception.ResourceNotFoundException;
 import com.asakaa.synthesis.exception.ValidationException;
 import com.asakaa.synthesis.repository.PatientRepository;
 import com.asakaa.synthesis.util.PatientMapper;
+import com.asakaa.synthesis.security.ClinicAccessGuard;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.springframework.security.core.Authentication;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDate;
@@ -30,6 +32,12 @@ class PatientServiceTest {
 
     @Mock
     private PatientMapper patientMapper;
+
+    @Mock
+    private ClinicAccessGuard clinicAccessGuard;
+
+    @Mock
+    private Authentication authentication;
 
     @InjectMocks
     private PatientService patientService;
@@ -77,7 +85,7 @@ class PatientServiceTest {
         when(patientMapper.toResponse(patient)).thenReturn(response);
 
         // Act
-        PatientResponse result = patientService.createPatient(request);
+        PatientResponse result = patientService.createPatient(request, authentication);
 
         // Assert
         assertNotNull(result);
@@ -92,7 +100,7 @@ class PatientServiceTest {
         when(patientRepository.existsByNationalId("12345")).thenReturn(true);
 
         // Act & Assert
-        assertThrows(ValidationException.class, () -> patientService.createPatient(request));
+        assertThrows(ValidationException.class, () -> patientService.createPatient(request, authentication));
         verify(patientRepository, never()).save(any(Patient.class));
     }
 
@@ -102,6 +110,6 @@ class PatientServiceTest {
         when(patientRepository.findById(999L)).thenReturn(Optional.empty());
 
         // Act & Assert
-        assertThrows(ResourceNotFoundException.class, () -> patientService.getPatientById(999L));
+        assertThrows(ResourceNotFoundException.class, () -> patientService.getPatientById(999L, authentication));
     }
 }
