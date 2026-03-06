@@ -18,13 +18,16 @@ public class Treatment extends BaseEntity {
     @JoinColumn(name = "diagnosis_id", nullable = false)
     private Diagnosis diagnosis;
 
+    @Column(length = 500)
     private String type;
 
     @Column(name = "drug_name")
     private String drugName;
 
+    @Column(columnDefinition = "TEXT")
     private String dosage;
 
+    @Column(length = 500)
     private String duration;
 
     @Column(columnDefinition = "TEXT")

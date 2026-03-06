@@ -71,4 +71,10 @@ public class ConsultationController {
         List<ConsultationResponse> response = consultationService.getActiveConsultationsByProvider(providerId);
         return ResponseEntity.ok(response);
     }
+    @GetMapping("/patient/{patientId}/history")
+    public ResponseEntity<List<ConsultationResponse>> getPatientConsultationHistory(@PathVariable Long patientId) {
+        List<ConsultationResponse> response = consultationService.getConsultationsByPatient(patientId);
+        return ResponseEntity.ok(response);
+    }
+
 }
