@@ -253,6 +253,33 @@ Authorization: Bearer <token_from_step_1>
 
 ---
 
+## Audit Logs Testing
+
+The system automatically records security and clinical events in the background. Use the `SUPER_ADMIN` token to verify these logs.
+
+### Step 6: View Global Audit Trail
+**Method**: `GET`  
+**URL**: `http://localhost:8080/api/v1/audit`  
+**Headers**: `Authorization: Bearer <SUPER_ADMIN_TOKEN>`
+
+**Expected Result**: A list of events like `LOGIN_SUCCESS`, `CREATE_PATIENT`, and `OPEN_CONSULTATION`.
+
+### Step 7: Verify Patient-Specific Auditing
+**Method**: `GET`  
+**URL**: `http://localhost:8080/api/v1/audit/patient/1`  
+**Headers**: `Authorization: Bearer <SUPER_ADMIN_TOKEN>`
+
+**Expected Result**: Shows every time Patient 1's record was modified or viewed.
+
+### Step 8: View Security Failures
+**Method**: `GET`  
+**URL**: `http://localhost:8080/api/v1/audit?success=false`  
+**Headers**: `Authorization: Bearer <SUPER_ADMIN_TOKEN>`
+
+**Expected Result**: Shows failed login attempts or unauthorized access violations (e.g., the `403` triggered in Scenario 1).
+
+---
+
 ## Troubleshooting
 
 ### Issue: 403 Forbidden (Clinic Access Denied)

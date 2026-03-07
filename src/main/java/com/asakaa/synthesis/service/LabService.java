@@ -2,6 +2,7 @@ package com.asakaa.synthesis.service;
 
 import com.asakaa.synthesis.domain.dto.request.LabResultRequest;
 import com.asakaa.synthesis.domain.dto.response.LabResultResponse;
+import com.asakaa.synthesis.domain.entity.AuditAction;
 import com.asakaa.synthesis.domain.entity.Consultation;
 import com.asakaa.synthesis.domain.entity.LabResult;
 import com.asakaa.synthesis.exception.ResourceNotFoundException;
@@ -23,6 +24,7 @@ public class LabService {
 
     private final LabResultRepository labResultRepository;
     private final ConsultationRepository consultationRepository;
+    private final AuditService auditService;
 
     @Transactional
     public LabResultResponse addLabResult(LabResultRequest request) {
@@ -44,12 +46,26 @@ public class LabService {
         labResult = labResultRepository.save(labResult);
         log.info("Lab result added with ID: {}", labResult.getId());
 
+        // Audit log
+        auditService.logAudit(AuditAction.ADD_LAB_RESULT, consultation.getPatient().getId(), "LabResult", labResult.getId(),
+            String.format("Added lab result: %s for consultation ID: %d", request.getTestName(), consultation.getId()));
+
         return toResponse(labResult);
     }
 
     public List<LabResultResponse> getLabResultsByConsultation(Long consultationId) {
         log.info("Fetching lab results for consultation ID: {}", consultationId);
-        return labResultRepository.findByConsultationId(consultationId).stream()
+        
+        List<LabResult> results = labResultRepository.findByConsultationId(consultationId);
+        
+        if (!results.isEmpty()) {
+            // Audit log - get patient ID from first result
+            Long patientId = results.get(0).getConsultation().getPatient().getId();
+            auditService.logAudit(AuditAction.VIEW_LAB_RESULTS, patientId, "Consultation", consultationId,
+                String.format("Viewed %d lab results for consultation ID: %d", results.size(), consultationId));
+        }
+        
+        return results.stream()
                 .map(this::toResponse)
                 .collect(Collectors.toList());
     }

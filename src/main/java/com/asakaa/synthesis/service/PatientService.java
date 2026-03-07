@@ -2,6 +2,7 @@ package com.asakaa.synthesis.service;
 
 import com.asakaa.synthesis.domain.dto.request.PatientRequest;
 import com.asakaa.synthesis.domain.dto.response.PatientResponse;
+import com.asakaa.synthesis.domain.entity.AuditAction;
 import com.asakaa.synthesis.domain.entity.Clinic;
 import com.asakaa.synthesis.domain.entity.Patient;
 import com.asakaa.synthesis.domain.entity.Provider;
@@ -28,12 +29,15 @@ public class PatientService {
     private final ClinicRepository clinicRepository;
     private final PatientMapper patientMapper;
     private final ClinicAccessGuard clinicAccessGuard;
+    private final AuditService auditService;
 
     @Transactional
     public PatientResponse createPatient(PatientRequest request, Authentication authentication) {
         log.info("Creating patient with national ID: {}", request.getNationalId());
 
         if (patientRepository.existsByNationalId(request.getNationalId())) {
+            auditService.logFailedAction(AuditAction.CREATE_PATIENT, null, 
+                "Duplicate national ID: " + request.getNationalId());
             throw new ValidationException("Patient with national ID " + request.getNationalId() + " already exists");
         }
 
@@ -49,6 +53,11 @@ public class PatientService {
 
         patient = patientRepository.save(patient);
 
+        // Audit log
+        auditService.logAudit(AuditAction.CREATE_PATIENT, patient.getId(), 
+            String.format("Created patient: %s %s (National ID: %s)", 
+                patient.getFirstName(), patient.getLastName(), patient.getNationalId()));
+
         log.info("Patient created successfully with ID: {}", patient.getId());
         return patientMapper.toResponse(patient);
     }
@@ -60,6 +69,10 @@ public class PatientService {
                 .orElseThrow(() -> new ResourceNotFoundException("Patient", id));
 
         clinicAccessGuard.verifyPatientAccess(authentication, patient);
+
+        // Audit log
+        auditService.logAudit(AuditAction.VIEW_PATIENT_PROFILE, patient.getId(), 
+            String.format("Viewed patient profile: %s %s", patient.getFirstName(), patient.getLastName()));
 
         return patientMapper.toResponse(patient);
     }
@@ -76,7 +89,18 @@ public class PatientService {
         // Check if nationalId is being changed to an existing one
         if (!patient.getNationalId().equals(request.getNationalId()) &&
                 patientRepository.existsByNationalId(request.getNationalId())) {
+            auditService.logFailedAction(AuditAction.UPDATE_PATIENT, patient.getId(), 
+                "Attempted to change to duplicate national ID: " + request.getNationalId());
             throw new ValidationException("Patient with national ID " + request.getNationalId() + " already exists");
+        }
+
+        // Track changes for audit
+        StringBuilder changes = new StringBuilder("Updated fields: ");
+        if (!patient.getFirstName().equals(request.getFirstName())) {
+            changes.append("firstName, ");
+        }
+        if (!patient.getLastName().equals(request.getLastName())) {
+            changes.append("lastName, ");
         }
 
         patient.setNationalId(request.getNationalId());
@@ -95,6 +119,9 @@ public class PatientService {
         patient.setRegion(request.getRegion());
 
         patient = patientRepository.save(patient);
+
+        // Audit log
+        auditService.logAudit(AuditAction.UPDATE_PATIENT, patient.getId(), changes.toString());
 
         log.info("Patient updated successfully with ID: {}", patient.getId());
         return patientMapper.toResponse(patient);
@@ -121,6 +148,10 @@ public class PatientService {
 
     public Page<PatientResponse> searchPatients(String query, Pageable pageable, Authentication authentication) {
         log.info("Searching patients with query: {}", query);
+
+        // Audit log for search
+        auditService.logAudit(AuditAction.SEARCH_PATIENT, null, 
+            "Searched patients with query: " + query);
 
         if (clinicAccessGuard.isSuperAdmin(authentication)) {
             return patientRepository.findByFirstNameContainingIgnoreCaseOrLastNameContainingIgnoreCase(

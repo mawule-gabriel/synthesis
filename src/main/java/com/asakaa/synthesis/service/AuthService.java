@@ -22,6 +22,7 @@ public class AuthService {
     private final ClinicRepository clinicRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
+    private final AuditService auditService;
 
     @Transactional
     public AuthResponse register(RegisterRequest request) {
@@ -51,6 +52,17 @@ public class AuthService {
 
         provider = providerRepository.save(provider);
 
+        // Audit log for provider registration
+        auditService.logAudit(
+            com.asakaa.synthesis.domain.entity.AuditAction.REGISTER_PROVIDER, 
+            null, 
+            "Provider", 
+            provider.getId(),
+            String.format("Provider registered: %s (%s) - Role: %s, Clinic: %s", 
+                provider.getName(), provider.getEmail(), provider.getRole(), 
+                clinic != null ? clinic.getName() : "None")
+        );
+
         String token = jwtUtil.generateToken(provider.getEmail(), provider.getRole());
 
         AuthResponse.AuthResponseBuilder responseBuilder = AuthResponse.builder()
@@ -70,11 +82,38 @@ public class AuthService {
 
     public AuthResponse login(AuthRequest request) {
         Provider provider = providerRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new ValidationException("Invalid email or password"));
+                .orElseThrow(() -> {
+                    // Audit failed login attempt
+                    auditService.logAudit(
+                        com.asakaa.synthesis.domain.entity.AuditAction.LOGIN_FAILED, 
+                        null, 
+                        "Auth", 
+                        null,
+                        String.format("Failed login attempt for email: %s", request.getEmail())
+                    );
+                    return new ValidationException("Invalid email or password");
+                });
 
         if (!passwordEncoder.matches(request.getPassword(), provider.getPasswordHash())) {
+            // Audit failed login attempt
+            auditService.logAudit(
+                com.asakaa.synthesis.domain.entity.AuditAction.LOGIN_FAILED, 
+                null, 
+                "Provider", 
+                provider.getId(),
+                String.format("Failed login attempt for provider: %s (%s)", provider.getName(), provider.getEmail())
+            );
             throw new ValidationException("Invalid email or password");
         }
+
+        // Audit successful login
+        auditService.logAudit(
+            com.asakaa.synthesis.domain.entity.AuditAction.LOGIN_SUCCESS, 
+            null, 
+            "Provider", 
+            provider.getId(),
+            String.format("Successful login: %s (%s)", provider.getName(), provider.getEmail())
+        );
 
         String token = jwtUtil.generateToken(provider.getEmail(), provider.getRole());
 

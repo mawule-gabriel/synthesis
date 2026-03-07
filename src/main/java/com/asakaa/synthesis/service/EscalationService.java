@@ -27,6 +27,7 @@ public class EscalationService {
     private final EscalationRepository escalationRepository;
     private final TelemedicineAdapter telemedicineAdapter;
     private final NotificationService notificationService;
+    private final AuditService auditService;
 
     @Transactional
     public EscalationResponse escalate(EscalationRequest request) {
@@ -59,6 +60,11 @@ public class EscalationService {
         consultationRepository.save(consultation);
 
         notificationService.notifyEscalation(consultation.getId(), referralId);
+
+        // Audit log
+        auditService.logAudit(AuditAction.ESCALATE_TO_SPECIALIST, consultation.getPatient().getId(), "Escalation", escalation.getId(),
+            String.format("Escalated consultation ID: %d to %s specialist (Referral ID: %s, Urgency: %s)", 
+                consultation.getId(), request.getSpecialistType(), referralId, urgency));
 
         log.info("Escalation completed. Referral ID: {}, Escalation ID: {}", referralId, escalation.getId());
 

@@ -5,6 +5,7 @@ import com.asakaa.synthesis.domain.dto.request.ConsultationUpdateRequest;
 import com.asakaa.synthesis.domain.dto.response.ConsultationResponse;
 import com.asakaa.synthesis.domain.dto.response.DiagnosisResponse;
 import com.asakaa.synthesis.domain.dto.response.TreatmentResponse;
+import com.asakaa.synthesis.domain.entity.AuditAction;
 import com.asakaa.synthesis.domain.entity.Consultation;
 import com.asakaa.synthesis.domain.entity.ConsultationStatus;
 import com.asakaa.synthesis.domain.entity.Patient;
@@ -40,6 +41,7 @@ public class ConsultationService {
     private final ProviderRepository providerRepository;
     private final ObjectMapper objectMapper;
     private final ClinicAccessGuard clinicAccessGuard;
+    private final AuditService auditService;
 
     @Transactional
     public ConsultationResponse openConsultation(ConsultationRequest request, Long providerId, Authentication authentication) {
@@ -64,6 +66,10 @@ public class ConsultationService {
                 .build();
 
         consultation = consultationRepository.save(consultation);
+
+        // Audit log
+        auditService.logAudit(AuditAction.OPEN_CONSULTATION, patient.getId(), "Consultation", consultation.getId(),
+            String.format("Opened consultation ID: %d, Chief complaint: %s", consultation.getId(), request.getChiefComplaint()));
 
         log.info("Consultation opened successfully with ID: {}", consultation.getId());
         return toResponse(consultation);
@@ -90,6 +96,10 @@ public class ConsultationService {
 
         consultation = consultationRepository.save(consultation);
 
+        // Audit log
+        auditService.logAudit(AuditAction.UPDATE_CONSULTATION, consultation.getPatient().getId(), "Consultation", consultation.getId(),
+            String.format("Updated consultation ID: %d", consultation.getId()));
+
         log.info("Consultation updated successfully with ID: {}", consultation.getId());
         return toResponse(consultation);
     }
@@ -108,6 +118,10 @@ public class ConsultationService {
 
         consultation = consultationRepository.save(consultation);
 
+        // Audit log
+        auditService.logAudit(AuditAction.CLOSE_CONSULTATION, consultation.getPatient().getId(), "Consultation", consultation.getId(),
+            String.format("Closed consultation ID: %d", consultation.getId()));
+
         log.info("Consultation closed successfully with ID: {}", consultation.getId());
         return toResponse(consultation);
     }
@@ -119,6 +133,10 @@ public class ConsultationService {
                 .orElseThrow(() -> new ResourceNotFoundException("Consultation", id));
 
         clinicAccessGuard.verifyConsultationAccess(authentication, consultation);
+
+        // Audit log
+        auditService.logAudit(AuditAction.VIEW_CONSULTATION, consultation.getPatient().getId(), "Consultation", consultation.getId(),
+            String.format("Viewed consultation ID: %d", consultation.getId()));
 
         return toResponse(consultation);
     }
@@ -148,6 +166,10 @@ public class ConsultationService {
         clinicAccessGuard.verifyPatientAccess(authentication, patient);
 
         List<Consultation> consultations = consultationRepository.findByPatientId(patientId);
+
+        // Audit log
+        auditService.logAudit(AuditAction.VIEW_PATIENT_HISTORY, patientId, "Patient", patientId,
+            String.format("Viewed consultation history for patient ID: %d (%d consultations)", patientId, consultations.size()));
 
         return consultations.stream()
                 .map(this::toResponse)

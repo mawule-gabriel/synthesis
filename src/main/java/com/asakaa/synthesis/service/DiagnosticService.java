@@ -44,6 +44,7 @@ public class DiagnosticService {
     private final ResponseParser responseParser;
     private final KnowledgeBaseService knowledgeBaseService;
     private final ObjectMapper objectMapper;
+    private final AuditService auditService;
 
     @Transactional
     public DiagnosticResponse analyze(DiagnosticRequest request) {
@@ -128,6 +129,10 @@ public class DiagnosticService {
                 .citations(citationReferences)
                 .generatedAt(LocalDateTime.now())
                 .build();
+
+        // Audit log
+        auditService.logAudit(AuditAction.RUN_DIAGNOSTIC_ANALYSIS, consultation.getPatient().getId(), "Consultation", consultation.getId(),
+            String.format("Ran diagnostic analysis for consultation ID: %d, generated %d differentials", consultation.getId(), differentials.size()));
 
         log.info("Diagnostic analysis completed for consultation ID: {} with {} differentials, {} citations, urgency: {}",
                 request.getConsultationId(), differentials.size(), citationReferences.size(), parseResult.urgencyLevel());
@@ -274,6 +279,10 @@ public class DiagnosticService {
 
             imageAnalysisRepository.save(imageAnalysis);
             log.debug("Persisted image analysis for consultation ID: {}", consultationId);
+
+            // Audit log
+            auditService.logAudit(AuditAction.ANALYZE_MEDICAL_IMAGE, consultation.getPatient().getId(), "Consultation", consultationId,
+                String.format("Analyzed medical image for consultation ID: %d", consultationId));
         }
 
         log.info("Image analysis completed successfully");

@@ -3,6 +3,7 @@ package com.asakaa.synthesis.service;
 import com.asakaa.synthesis.domain.dto.request.TreatmentRequest;
 import com.asakaa.synthesis.domain.dto.response.TreatmentPlanResponse;
 import com.asakaa.synthesis.domain.dto.response.TreatmentResponse;
+import com.asakaa.synthesis.domain.entity.AuditAction;
 import com.asakaa.synthesis.domain.entity.Diagnosis;
 import com.asakaa.synthesis.domain.entity.Treatment;
 import com.asakaa.synthesis.exception.DiagnosticException;
@@ -33,6 +34,7 @@ public class TreatmentService {
     private final BedrockPromptBuilder bedrockPromptBuilder;
     private final BedrockClient bedrockClient;
     private final ObjectMapper objectMapper = new ObjectMapper();
+    private final AuditService auditService;
 
     @Transactional
     public TreatmentPlanResponse generateTreatmentPlan(TreatmentRequest request) {
@@ -61,6 +63,10 @@ public class TreatmentService {
         treatments = treatmentRepository.saveAll(treatments);
 
         log.info("Generated and saved {} treatments for diagnosis ID: {}", treatments.size(), request.getDiagnosisId());
+
+        // Audit log
+        auditService.logAudit(AuditAction.GENERATE_TREATMENT_PLAN, diagnosis.getConsultation().getPatient().getId(), "Diagnosis", diagnosis.getId(),
+            String.format("Generated treatment plan for diagnosis ID: %d (%s), %d treatments", diagnosis.getId(), diagnosis.getConditionName(), treatments.size()));
 
         // Build response
         return TreatmentPlanResponse.builder()
