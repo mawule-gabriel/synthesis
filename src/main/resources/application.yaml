@@ -20,9 +20,16 @@ spring:
   flyway:
     enabled: true
     baseline-on-migrate: true
+  
+
+  
+  web:
+    resources:
+      add-mappings: false
 
 server:
   port: 8081
+  address: 0.0.0.0
 
 aws:
   bedrock:

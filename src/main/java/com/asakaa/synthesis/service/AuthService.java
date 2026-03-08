@@ -131,5 +131,23 @@ public class AuthService {
 
         return responseBuilder.build();
     }
+
+    public AuthResponse getCurrentUser(String email) {
+        Provider provider = providerRepository.findByEmail(email)
+                .orElseThrow(() -> new ValidationException("User not found"));
+
+        AuthResponse.AuthResponseBuilder responseBuilder = AuthResponse.builder()
+                .email(provider.getEmail())
+                .name(provider.getName())
+                .role(provider.getRole());
+
+        if (provider.getClinic() != null) {
+            responseBuilder
+                    .clinicId(provider.getClinic().getId())
+                    .clinicName(provider.getClinic().getName());
+        }
+
+        return responseBuilder.build();
+    }
 }
 
